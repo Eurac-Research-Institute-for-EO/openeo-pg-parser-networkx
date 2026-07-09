@@ -4,6 +4,7 @@ import sys
 
 sys.setrecursionlimit(16385)  # Necessary when parsing really big graphs
 import functools
+
 ## For yprov4wfs
 import json
 import logging
@@ -25,12 +26,18 @@ from yprov4wfs.datamodel.data import Data
 from yprov4wfs.datamodel.task import Task
 from yprov4wfs.datamodel.workflow import Workflow
 
-from openeo_pg_parser_networkx.pg_schema import (PGEdgeType, ProcessGraph,
-                                                 ProcessNode, ResultReference)
+from openeo_pg_parser_networkx.pg_schema import (
+    PGEdgeType,
+    ProcessGraph,
+    ProcessNode,
+    ResultReference,
+)
 from openeo_pg_parser_networkx.process_registry import Process
-from openeo_pg_parser_networkx.utils import (ProcessGraphUnflattener,
-                                             generate_curve_fit_function,
-                                             parse_nested_parameter)
+from openeo_pg_parser_networkx.utils import (
+    ProcessGraphUnflattener,
+    generate_curve_fit_function,
+    parse_nested_parameter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -278,11 +285,11 @@ class OpenEOProcessGraph:
                 function_pg_data = self.pg_data["process_graph"][
                     self._EVAL_ENV.node_name
                 ]["arguments"][arg_name]
-                self.G.nodes[self._EVAL_ENV.node_uid]["resolved_kwargs"][arg_name] = (
-                    generate_curve_fit_function(
-                        process_graph=OpenEOProcessGraph(pg_data=function_pg_data),
-                        variables=['x'],
-                    )
+                self.G.nodes[self._EVAL_ENV.node_uid]["resolved_kwargs"][
+                    arg_name
+                ] = generate_curve_fit_function(
+                    process_graph=OpenEOProcessGraph(pg_data=function_pg_data),
+                    variables=['x'],
                 )
             else:
                 self.G.nodes[self._EVAL_ENV.node_uid]["resolved_kwargs"][
