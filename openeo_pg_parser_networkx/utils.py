@@ -4,7 +4,8 @@ from typing import Any
 
 import pydantic
 
-from openeo_pg_parser_networkx.pg_schema import ParameterReference, ResultReference
+from openeo_pg_parser_networkx.pg_schema import (ParameterReference,
+                                                 ResultReference)
 
 
 def parse_nested_parameter(parameter: Any):
@@ -144,7 +145,8 @@ from typing import Any
 
 import numpy as np
 
-from openeo_pg_parser_networkx.pg_schema import ParameterReference, ResultReference
+from openeo_pg_parser_networkx.pg_schema import (ParameterReference,
+                                                 ResultReference)
 
 
 def _format_nodes(pg, vars):

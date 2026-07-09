@@ -3,11 +3,9 @@ import logging
 from timeit import default_timer as timer
 from typing import Any, Callable, Optional
 
-from openeo_pg_parser_networkx.process_registry import (
-    DEFAULT_NAMESPACE,
-    Process,
-    ProcessRegistry,
-)
+from openeo_pg_parser_networkx.process_registry import (DEFAULT_NAMESPACE,
+                                                        Process,
+                                                        ProcessRegistry)
 
 logger = logging.getLogger(__name__)
 
