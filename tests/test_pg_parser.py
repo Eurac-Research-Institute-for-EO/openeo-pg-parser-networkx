@@ -113,6 +113,66 @@ def test_results_cache_not_stale_for_callback_reinvocation():
     assert invocation_count["echo"] == 2
 
 
+def test_results_cache_not_stale_for_vectorized_slice_callbacks():
+    """Same stale-cache defect on a single (DataArray-like) array: when a
+    callback is vectorized over the non-core dimension (as ``apply_ufunc`` with
+    ``vectorize=True`` does for ``apply_dimension``/``reduce_dimension``), the
+    callback node is re-invoked once per slice with different data. Without the
+    fix every slice returns the first slice's result."""
+    import xarray as xr
+
+    invocation_count = {"echo": 0}
+
+    def echo(*args, data=None, **kwargs):
+        invocation_count["echo"] += 1
+        value = args[0] if args else data
+        return np.asarray(value)
+
+    def apply_over_slices(data, reducer, **kwargs):
+        arr = xr.DataArray(
+            np.asarray(data), dims=("cell", "t"), coords={"cell": range(3), "t": range(5)}
+        )
+        return xr.apply_ufunc(
+            reducer,
+            arr,
+            input_core_dims=[["t"]],
+            output_core_dims=[["t"]],
+            vectorize=True,
+            dask="allowed",
+        )
+
+    process_registry = {
+        "echo": Process({}, echo, "predefined"),
+        "apply_over_slices": Process({}, apply_over_slices, "predefined"),
+    }
+    callback_graph = {
+        "echo1": {
+            "process_id": "echo",
+            "arguments": {"data": {"from_parameter": "data"}},
+            "result": True,
+        }
+    }
+    payload = np.arange(15, dtype=float).reshape(3, 5)  # each cell row is distinct
+    pg_data = {
+        "aos": {
+            "process_id": "apply_over_slices",
+            "arguments": {
+                "data": payload.tolist(),
+                "reducer": {"process_graph": callback_graph},
+            },
+            "result": True,
+        }
+    }
+    callable = OpenEOProcessGraph(pg_data=pg_data).to_callable(
+        process_registry=process_registry, results_cache={}
+    )
+    result = callable()
+
+    # Every slice must be processed with its own input (no stale first slice).
+    np.testing.assert_array_equal(result, payload)
+    assert invocation_count["echo"] == payload.shape[0]
+
+
 def test_function_generation():
     from openeo_pg_parser_networkx.utils import generate_curve_fit_function
 
