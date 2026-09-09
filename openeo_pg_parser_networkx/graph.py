@@ -396,6 +396,15 @@ class OpenEOProcessGraph:
                 # If this node has already been computed once, just grab that result from the results_cache instead of recomputing it.
                 # This cannot be done for aggregated data as the wrapped function has to be called multiple times with different values.
                 # This also means the results_cache will be useless for these functions.
+                # The results_cache is keyed by node id only, so it can only be
+                # reused when the node is invoked without runtime positional
+                # arguments: when a node receives arguments (e.g. it is a process
+                # callback/reducer evaluated once per data variable or per slice),
+                # it may legitimately be called several times with different
+                # inputs, and serving the cached result of an earlier call would
+                # return stale data.
+                if args:
+                    raise KeyError()
                 # TODO: track how often functions need to be called and check if they have been called that many times, if yes, we can
                 # use the cache for aggregate functions, but this is probably not super necessary
                 parent_node_id = [edge[0] for edge in self.edges if edge[1] == node]

@@ -60,6 +60,59 @@ def test_named_parameters():
     assert result == "success"
 
 
+def test_results_cache_not_stale_for_callback_reinvocation():
+    """A process callback node that is invoked several times with different
+    runtime arguments (e.g. a reducer evaluated once per data variable or per
+    slice) must not be served from the shared results_cache, which is keyed by
+    node id only. Previously the result of the first invocation was returned for
+    every subsequent call, so ``r2`` below wrongly equalled ``r1``."""
+    import numpy as np
+
+    invocation_count = {"echo": 0}
+
+    def echo(*args, data=None, **kwargs):
+        invocation_count["echo"] += 1
+        value = args[0] if args else data
+        return np.asarray(value) * 1
+
+    def run_twice(a, b, reducer, **kwargs):
+        r1 = reducer(np.asarray(a) * 1)
+        r2 = reducer(np.asarray(b) * 1)
+        return r1, r2
+
+    process_registry = {
+        "echo": Process({}, echo, "predefined"),
+        "run_twice": Process({}, run_twice, "predefined"),
+    }
+    callback_graph = {
+        "echo1": {
+            "process_id": "echo",
+            "arguments": {"data": {"from_parameter": "data"}},
+            "result": True,
+        }
+    }
+    pg_data = {
+        "rt": {
+            "process_id": "run_twice",
+            "arguments": {
+                "a": [1, 2, 3],
+                "b": [10, 20, 30],
+                "reducer": {"process_graph": callback_graph},
+            },
+            "result": True,
+        }
+    }
+    callable = OpenEOProcessGraph(pg_data=pg_data).to_callable(
+        process_registry=process_registry, results_cache={}
+    )
+    r1, r2 = callable()
+
+    np.testing.assert_array_equal(r1, [1, 2, 3])
+    np.testing.assert_array_equal(r2, [10, 20, 30])
+    # The callback must be evaluated once per invocation with its actual input.
+    assert invocation_count["echo"] == 2
+
+
 def test_function_generation():
     from openeo_pg_parser_networkx.utils import generate_curve_fit_function
 
